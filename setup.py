@@ -18,11 +18,8 @@ setup(
     packages=find_packages(),
     python_requires=">=3.7",
     install_requires=[
+        "fps",
         "fastapi",
-        "aiofiles",
-        "typer",
-        "uvicorn",
-        "websockets",
         "kernel_server",
     ],
     extras_require={
@@ -36,7 +33,7 @@ setup(
         ],
     },
     entry_points={
-        "console_scripts": ["jupyverse = jupyverse.jupyverse:cli"],
+        "console_scripts": ["jupyverse = fps.cli:app"],
     },
     classifiers=(
         "Programming Language :: Python :: 3",

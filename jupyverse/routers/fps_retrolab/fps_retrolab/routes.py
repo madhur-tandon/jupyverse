@@ -1,51 +1,40 @@
 import json
 import pathlib
-import pkgutil
 from http import HTTPStatus
+import sys
 
 from fastapi import Response
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
+from fastapi.routing import Mount
 
-import retrolab  # type: ignore
-
-from jupyverse import JAPIRouter
-
-
-def init(jupyverse):
-    router.init(jupyverse)
-    return router
+import fps
+import retrolab
 
 
-class RetroLabRouter(JAPIRouter):
-    def init(self, jupyverse):
-        self.jupyverse = jupyverse
+router = fps.APIRouter()
+retrolab_dir = pathlib.Path(retrolab.__file__).parent
+prefix_dir = pathlib.Path(sys.prefix)
 
-        retrolab_package = pkgutil.get_loader("retrolab")
-        self.retrolab_dir = pathlib.Path(retrolab_package.path).parent
+router.mount(
+    "/static/retro",
+    StaticFiles(directory=retrolab_dir / "static"),
+    name="static",
+)
 
-        self.jupyverse.app.mount(
-            "/static/retro",
-            StaticFiles(directory=self.retrolab_dir / "static"),
-            name="static",
-        )
-        self.jupyverse.app.mount(
-            "/lab/extensions/@retrolab/lab-extension/static",
-            StaticFiles(directory=self.retrolab_dir / "labextension" / "static"),
-            name="labextension/static",
-        )
-        self.jupyverse.app.mount(
-            "/lab/api/themes",
-            StaticFiles(
-                directory=self.prefix_dir / "share" / "jupyter" / "lab" / "themes"
-            ),
-            name="themes",
-        )
-        self.jupyverse.app.include_router(router)
+router.mount(
+    "/lab/extensions/@retrolab/lab-extension/static",
+    StaticFiles(directory=retrolab_dir / "labextension" / "static"),
+    name="labextension/static",
+)
 
-
-router = RetroLabRouter()
-
+router.mount(
+    "/lab/api/themes",
+    StaticFiles(
+        directory=prefix_dir / "share" / "jupyter" / "lab" / "themes"
+    ),
+    name="themes",
+)
 
 @router.get("/")
 async def get_root():
@@ -70,7 +59,7 @@ async def get_terminals():
 @router.get("/lab/api/settings/@jupyterlab/{name0}:{name1}")
 async def get_setting(name0, name1):
     with open(
-        router.prefix_dir
+        prefix_dir
         / "share"
         / "jupyter"
         / "lab"
@@ -104,7 +93,7 @@ async def change_setting(name0, name1):
 async def get_settings():
     settings = []
     for path in (
-        router.prefix_dir / "share" / "jupyter" / "lab" / "schemas" / "@jupyterlab"
+        prefix_dir / "share" / "jupyter" / "lab" / "schemas" / "@jupyterlab"
     ).glob("*/*.json"):
         with open(path) as f:
             schema = json.load(f)
@@ -123,7 +112,7 @@ async def get_settings():
 
 
 def get_index(doc_name, retro_page):
-    for path in (router.retrolab_dir / "labextension" / "static").glob(
+    for path in (retrolab_dir / "labextension" / "static").glob(
         "remoteEntry.*.js"
     ):
         load = f"static/{path.name}"
@@ -133,7 +122,7 @@ def get_index(doc_name, retro_page):
         "appName": "RetroLab",
         "appNamespace": "retro",
         "appSettingsDir": str(
-            router.prefix_dir / "share" / "jupyter" / "lab" / "settings"
+            prefix_dir / "share" / "jupyter" / "lab" / "settings"
         ),
         "appUrl": "/lab",
         "appVersion": retrolab.__version__,
@@ -162,7 +151,7 @@ def get_index(doc_name, retro_page):
         "fullTreeUrl": "/lab/tree",
         "fullWorkspacesApiUrl": "/lab/api/workspaces",
         "labextensionsPath": [
-            str(router.prefix_dir / "share" / "jupyter" / "labextensions")
+            str(prefix_dir / "share" / "jupyter" / "labextensions")
         ],
         "labextensionsUrl": "/lab/extensions",
         "licensesUrl": "/lab/api/licenses",
@@ -170,12 +159,12 @@ def get_index(doc_name, retro_page):
         "mathjaxConfig": "TeX-AMS-MML_HTMLorMML-full,Safe",
         "retroLogo": False,
         "retroPage": retro_page,
-        "schemasDir": str(router.prefix_dir / "share" / "jupyter" / "lab" / "schemas"),
+        "schemasDir": str(prefix_dir / "share" / "jupyter" / "lab" / "schemas"),
         "settingsUrl": "/lab/api/settings",
-        "staticDir": str(router.retrolab_dir / "static"),
-        "templatesDir": str(router.retrolab_dir / "templates"),
+        "staticDir": str(retrolab_dir / "static"),
+        "templatesDir": str(retrolab_dir / "templates"),
         "terminalsAvailable": True,
-        "themesDir": str(router.prefix_dir / "share" / "jupyter" / "lab" / "themes"),
+        "themesDir": str(prefix_dir / "share" / "jupyter" / "lab" / "themes"),
         "themesUrl": "/lab/api/themes",
         "translationsApiUrl": "/lab/api/translations",
         "treeUrl": "/lab/tree",
@@ -215,3 +204,5 @@ INDEX_HTML = """\
 </body>
 </html>
 """
+
+router = fps.hooks.register_router(router, 0)

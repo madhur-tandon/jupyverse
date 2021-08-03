@@ -1,29 +1,17 @@
 import os
 import json
 import shutil
+
 from pathlib import Path
 from datetime import datetime
 from typing import Optional, List, Dict, Union, cast
-
 from starlette.requests import Request
 
-from jupyverse import JAPIRouter
-
+import fps
 from .models import Content, SaveContent, Checkpoint
 
 
-def init(jupyverse):
-    router.init(jupyverse)
-    return router
-
-
-class ContentsRouter(JAPIRouter):
-    def init(self, jupyverse):
-        self.jupyverse = jupyverse
-        self.jupyverse.app.include_router(router)
-
-
-router = ContentsRouter()
+router = fps.APIRouter()
 
 
 @router.post(
@@ -205,3 +193,6 @@ def get_available_path(path: Path):
         available_path = directory / (name.stem + i_str + name.suffix)
         if not available_path.exists():
             return available_path
+
+
+router = fps.hooks.register_router(router, 0)

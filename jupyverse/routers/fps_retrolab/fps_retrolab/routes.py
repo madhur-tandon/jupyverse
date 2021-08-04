@@ -205,4 +205,4 @@ INDEX_HTML = """\
 </html>
 """
 
-router = fps.hooks.register_router(router, 0)
+r = fps.hooks.register_router(router, 0)

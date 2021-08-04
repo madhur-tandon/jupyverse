@@ -11,32 +11,20 @@ from kernel_server import KernelServer  # type: ignore
 
 from .models import Session
 
-from jupyverse import JAPIRouter
+import fps
 
 
-def init(jupyverse):
-    router.init(jupyverse)
-    return router
+router = fps.APIRouter()
 
-
-class KernelRouter(JAPIRouter):
-    def init(self, jupyverse):
-        self.jupyverse = jupyverse
-        self.kernelspecs = {}
-        self.sessions = {}
-        self.kernels = {}
-
-        self.prefix_dir = pathlib.Path(sys.prefix)
-
-        self.jupyverse.app.include_router(router)
-
-
-router = KernelRouter()
+kernelspecs: dict = {}
+sessions: dict = {}
+kernels: dict = {}
+prefix_dir: str = pathlib.Path(sys.prefix)
 
 
 @router.get("/api/kernelspecs")
 async def get_kernelspecs():
-    for path in (router.prefix_dir / "share" / "jupyter" / "kernels").glob(
+    for path in (prefix_dir / "share" / "jupyter" / "kernels").glob(
         "*/kernel.json"
     ):
         with open(path) as f:
@@ -47,14 +35,14 @@ async def get_kernelspecs():
             for f in path.parent.iterdir()
             if f.is_file() and f.name != "kernel.json"
         }
-        router.kernelspecs[name] = {"name": name, "spec": spec, "resources": resources}
-    return {"default": "python3", "kernelspecs": router.kernelspecs}
+        kernelspecs[name] = {"name": name, "spec": spec, "resources": resources}
+    return {"default": "python3", "kernelspecs": kernelspecs}
 
 
 @router.get("/kernelspecs/{kernel_name}/{file_name}")
 async def get_kernelspec(kernel_name, file_name):
     return FileResponse(
-        router.prefix_dir / "share" / "jupyter" / "kernels" / kernel_name / file_name
+        prefix_dir / "share" / "jupyter" / "kernels" / kernel_name / file_name
     )
 
 
@@ -63,12 +51,12 @@ async def get_kernels():
     return [
         {
             "id": kernel_id,
-            "name": kernel["name"],
+            "name": v["name"],
             "last_activity": "2021-07-27T09:50:07.217545Z",
             "execution_state": "idle",
             "connections": 0,
         }
-        for kernel_id, kernel in router.kernels.items()
+        for kernel_id, v in kernels.items()
     ]
 
 
@@ -77,13 +65,13 @@ async def get_session(request: Request):
     rename_session = await request.json()
     session_id = rename_session.pop("id")
     for key, value in rename_session.items():
-        router.sessions[session_id][key] = value
-    return Session(**router.sessions[session_id])
+        sessions[session_id][key] = value
+    return Session(**sessions[session_id])
 
 
 @router.get("/api/sessions")
 async def get_sessions():
-    return list(router.sessions.values())
+    return list(sessions.values())
 
 
 @router.post(
@@ -96,7 +84,7 @@ async def create_session(request: Request):
     kernel_name = create_session["kernel"]["name"]
     kernel_server = KernelServer(
         kernelspec_path=str(
-            router.prefix_dir
+            prefix_dir
             / "share"
             / "jupyter"
             / "kernels"
@@ -105,7 +93,7 @@ async def create_session(request: Request):
         )
     )
     kernel_id = str(uuid.uuid4())
-    router.kernels[kernel_id] = {"name": kernel_name, "server": kernel_server}
+    kernels[kernel_id] = {"name": kernel_name, "server": kernel_server}
     await kernel_server.start()
     session_id = str(uuid.uuid4())
     session = {
@@ -122,12 +110,15 @@ async def create_session(request: Request):
         },
         "notebook": {"path": create_session["path"], "name": create_session["name"]},
     }
-    router.sessions[session_id] = session
+    sessions[session_id] = session
     return Session(**session)
 
 
 @router.websocket("/api/kernels/{kernel_id}/channels")
 async def websocket_endpoint(websocket: WebSocket, kernel_id, session_id):
     await websocket.accept()
-    kernel_server = router.kernels[kernel_id]["server"]
+    kernel_server = kernels[kernel_id]["server"]
     await kernel_server.serve(websocket, session_id)
+
+
+r = fps.hooks.register_router(router, 0)

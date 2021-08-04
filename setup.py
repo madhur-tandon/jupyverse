@@ -19,8 +19,7 @@ setup(
     python_requires=">=3.7",
     install_requires=[
         "fps",
-        "fastapi",
-        "kernel_server",
+        "fastapi"
     ],
     extras_require={
         "test": [
@@ -29,7 +28,7 @@ setup(
             "mypy",
             "pytest",
             "requests",
-            "retrolab",
+            "fps-retrolab",
         ],
     },
     entry_points={

@@ -27,8 +27,7 @@ setup(
             "black",
             "mypy",
             "pytest",
-            "requests",
-            "fps-retrolab",
+            "requests"
         ],
     },
     entry_points={

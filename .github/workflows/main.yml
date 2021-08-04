@@ -37,6 +37,7 @@ jobs:
     - name: Install jupyverse
       run: |
         pip install -e .[test]
+        pip install -e ./jupyverse/routers/fps_contents
 
     - name: Check style
       run: |

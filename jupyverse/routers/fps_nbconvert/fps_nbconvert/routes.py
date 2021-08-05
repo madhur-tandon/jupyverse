@@ -8,22 +8,9 @@ try:
 except Exception:
     nbconvert = None
 
-from jupyverse import JAPIRouter
+import fps
 
-
-def init(jupyverse):
-    router.init(jupyverse)
-    return router
-
-
-class NbconvertRouter(JAPIRouter):
-    def init(self, jupyverse):
-        self.jupyverse = jupyverse
-        self.jupyverse.app.include_router(router)
-
-
-router = NbconvertRouter()
-
+router = fps.APIRouter()
 
 @router.get("/api/nbconvert")
 async def get_nbconvert_formats():
